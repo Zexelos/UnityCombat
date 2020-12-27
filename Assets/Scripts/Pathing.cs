@@ -1,7 +1,7 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
-using System.Linq;
-using System.Collections.Generic;
 
 public class Pathing : MonoBehaviour
 {
@@ -9,29 +9,74 @@ public class Pathing : MonoBehaviour
     [SerializeField] GameObject path = default;
     [SerializeField] NavMeshAgent agent = default;
     [SerializeField] int destPoint = 0;
+    [SerializeField] float viewRadius = 10f;
+    [SerializeField] float enemyViewAngle = 30f;
+    [SerializeField] float maxDistance = 3f;
+
+    Enemy enemy;
+    bool isChasing;
 
     // Start is called before the first frame update
     void Start()
     {
+        enemy = GetComponent<Enemy>();
+
         points = path.GetComponentsInChildren<Transform>();
 
         List<Transform> tList = points.ToList();
         tList.RemoveAt(0);
         points = tList.ToArray();
 
-        foreach (var item in tList)
-            //Debug.Log(item.position.ToString());
-
         agent.autoBraking = false;
 
         GoToNextPoint();
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (!agent.pathPending && agent.remainingDistance <= 0.5f)
             GoToNextPoint();
+
+        Collider[] hits = Physics.OverlapSphere(transform.position, viewRadius);
+
+        if (hits != null)
+        {
+            for (int i = 0; i < hits.Length; i++)
+            {
+                Player player = hits[i].GetComponent<Player>();
+
+                if (player != null)
+                {
+                    float angle = Vector3.Angle(transform.forward, player.transform.position - transform.position);
+
+                    if (angle < enemyViewAngle)
+                    {
+                        float distance = Vector3.Distance(player.transform.position, transform.position);
+
+                        agent.speed = 5f;
+                        agent.destination = (player.transform.position);
+
+                        Quaternion lookRotation = Quaternion.LookRotation(player.transform.position - transform.position);
+                        transform.rotation = lookRotation;
+
+                        if (distance <= maxDistance)
+                        {
+                            enemy.DealDamageTo(player);
+
+                            agent.isStopped = true;
+                        }
+                        else
+                            agent.isStopped = false;
+                    }
+                }
+                else
+                {
+                    agent.isStopped = false;
+                    agent.speed = 3f;
+                    agent.destination = points[destPoint].position;
+                }
+            }
+        }
     }
 
     void GoToNextPoint()
@@ -42,7 +87,6 @@ public class Pathing : MonoBehaviour
         agent.destination = points[destPoint].position;
 
         destPoint = (destPoint + 1) % points.Length;
-
-        //Debug.Log($"Current destination: {points[destPoint].gameObject.name}\n{points[destPoint].position}");
+        Debug.Log($"Destination: {points[destPoint].gameObject.name}");
     }
 }

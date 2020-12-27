@@ -24,7 +24,9 @@ public class Player : MonoBehaviour, ICombat
 
     public void TakeDamage(float damage)
     {
+        Debug.Log($"You took {damage} damage");
         currentHealth -= damage;
+        Debug.Log($"Current health: {currentHealth}");
     }
 
     void Start()
